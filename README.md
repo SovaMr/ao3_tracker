@@ -5,7 +5,7 @@ A script that automatically tracks your daily hits and kudos and appends them to
 
 The AO3 Tracker is a simple JavaScript code that will automatically fetch information about the selected stories.
 
-Based on the story URL, it fetches the publicly available information.
+Based on the story URL, it fetches ONLY the publicly available information.
 
 # No credentials needed!
 
@@ -19,3 +19,13 @@ You can schedule the script to run daily, so it will calculate the deltas.
 
 # What is delta? 
 It is a difference in hits between today and yesterday.
+
+# Need more info?
+If you want to add information about bookmarks or comments just add the following to the function fetchAO3Stats():
+
+const bookmarksMatch = clean.match(/<dt[^>]*>\s*Bookmarks:\s*<\/dt>\s*<dd[^>]*>([\d,]+)/i);
+const commentsMatch  = clean.match(/<dt[^>]*>\s*Comments:\s*<\/dt>\s*<dd[^>]*>([\d,]+)/i);
+
+Remember to update your return(), too:
+
+return { hits, kudos, bookmarks, comments };
