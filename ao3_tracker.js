@@ -19,41 +19,69 @@ function updateAO3Stats() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheet = ss.getSheetByName("Story Stats - AO3") || ss.getSheets()[0];
   const lastRow = sheet.getLastRow();
-  const today = Utilities.formatDate(new Date(), ss.getSpreadsheetTimeZone(), "dd-MMM"); 
+  const today = Utilities.formatDate(new Date(), ss.getSpreadsheetTimeZone(), "dd-MMM");
 
   // Read previous hits from the last data row (row 3+)
   let prevHits = {};
   if (lastRow >= 3) {
-    const prevValues = sheet.getRange(lastRow, 2, 1, WORKS.length).getValues()[0];
-    WORKS.forEach((work, i) => prevHits[work.name] = parseInt(prevValues[i] || 0));
+    const prevHitsValues = sheet.getRange(lastRow, 2, 1, WORKS.length).getValues()[0];
+    WORKS.forEach((work, i) => prevHits[work.name] = parseInt(prevHitsValues[i] || 0, 10));
+  }
+
+  // Read previous kudos from the last data row (row 3+)
+  let prevKudos = {};
+  if (lastRow >= 3) {
+    const prevKudoValues = sheet.getRange(lastRow, 2 + WORKS.length * 3, 1, WORKS.length).getValues()[0];
+    WORKS.forEach((work, i) => prevKudos[work.name] = parseInt(prevKudoValues[i] || 0, 10));
   }
 
   const hits = [];
-  const deltas = [];
+  const hitsdelta = [];
   const kudos = [];
+  const kudosdelta = [];
 
   for (const work of WORKS) {
     const stats = fetchAO3Stats(work.url);
     hits.push(stats.hits);
     kudos.push(stats.kudos);
-    let diff = 0;
-const prev = prevHits[work.name];
+    let hitsdiff = 0;
+    let kudosdiff = 0;
 
-if (!prev || prev === 0) {
+    // --- HIT DELTA ---
+const prevHit = prevHits[work.name];
+
+if (!prevHit || prevHit === 0) {
   // First recorded day or missing data
-  diff = stats.hits;
+  hitsdiff = stats.hits;
 } else {
-  diff = stats.hits - prev;
+  hitsdiff = stats.hits - prevHit;
+}
+
+    // --- KUDOS DELTA ---
+const prevKudo = prevKudos[work.name];
+
+if (!prevKudo || prevKudo === 0) {
+  // First recorded day or missing data
+  kudosdiff = stats.kudos;
+} else {
+  kudosdiff = stats.kudos - prevKudo;
 }
 
 
-    deltas.push(diff);
-    Logger.log(`${work.name}: ${stats.hits} hits (+${diff}), ${stats.kudos} kudos`);
-    Utilities.sleep(3000); // polite delay between requests
+    hitsdelta.push(hitsdiff);
+    kudosdelta.push(kudosdiff);
+    Logger.log(`${work.name}: ${stats.hits} hits delta (+${hitsdiff}), kudos delta (+${kudosdiff}), ${stats.kudos} kudos`);
+    // polite delay between requests
+    Utilities.sleep(3000); 
   }
 
-  // Build row in your sheet’s structure: [Date, Hits..., Deltas..., Kudos...]
-  const newRow = [today].concat(hits, deltas, kudos);
+  // Build row in your sheet’s structure: [Date, Hits, Hits Delta, Kudos Delta, Kudos]
+  const newRow = [today].concat(
+    hits, 
+    hitsdelta, 
+    kudosdelta, 
+    kudos);
+
   sheet.appendRow(newRow);
   Logger.log("✅ Added new AO3 stats row");
 }
