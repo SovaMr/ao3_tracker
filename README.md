@@ -24,6 +24,7 @@ Delta is the difference in hits between today and yesterday.
 For this code, the document collects data in G-Sheet, starting from row 3. See code line 33.
 
 |        |       Hits        |    Delta Hits     |    Delta Kudos    |       Kudos       |
+| ------ | ----------------- | ----------------- | ----------------- | ----------------- |
 |  Date  | Story 1 | Story 2 | Story 1 | Story 2 | Story 1 | Story 2 | Story 1 | Story 2 | 
 | 13-Nov | xxxxxxx | xxxxxxx | xxxxxxx | xxxxxxx | xxxxxxx | xxxxxxx | xxxxxxx | xxxxxxx |
 
