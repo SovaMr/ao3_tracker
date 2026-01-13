@@ -25,8 +25,7 @@ For this code, the document collects data in G-Sheet, starting from row 3. See c
 
 |        |       Hits        |    Delta Hits     |    Delta Kudos    |       Kudos       |
 | ------ | ----------------- | ----------------- | ----------------- | ----------------- |
-|  Date  | Story 1 | Story 2 | Story 1 | Story 2 | Story 1 | Story 2 | Story 1 | Story 2 | 
-| ------ | ----------------- | ----------------- | ----------------- | ----------------- |
+|  Date  | Story 1   Story 2 | Story 1   Story 2 | Story 1   Story 2 | Story 1   Story 2 | 
 | 13-Nov | xxxxxxx | xxxxxxx | xxxxxxx | xxxxxxx | xxxxxxx | xxxxxxx | xxxxxxx | xxxxxxx |
 
 
