@@ -9,6 +9,8 @@ const WORKS = [
   { name: "Light", url: "https://archiveofourown.org/works/55810327"},
   { name: "Home", url: "https://archiveofourown.org/works/53755675"},
   { name: "Entanglement", url: "https://archiveofourown.org/works/48060295" },
+  { name: "Glowing", url: "https://archiveofourown.org/works/77444221" },
+  { name: "No Lying", url: "https://archiveofourown.org/works/77164386"},
   { name: "Little Bit", url: "https://archiveofourown.org/works/49061737" }
 ];
 
