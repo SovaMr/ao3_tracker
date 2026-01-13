@@ -1,6 +1,11 @@
 # AO3 Tracker App
 
-A script that automatically tracks your daily hits and kudos and appends them to your G-Sheet
+A script that automatically tracks your daily hits and kudos and appends them to your G-Sheet via the AppScript in your G-Sheet:
+
+https://developers.google.com/apps-script
+
+<img width="919" height="252" alt="image" src="https://github.com/user-attachments/assets/0e29acb6-24a5-4c9f-a42c-e2c65d0b59a7" />
+
 
 
 The AO3 Tracker is a simple JavaScript code that will automatically fetch information about the selected stories.
