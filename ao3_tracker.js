@@ -73,8 +73,7 @@ if (!prevKudo || prevKudo === 0) {
     hitsdelta.push(hitsdiff);
     kudosdelta.push(kudosdiff);
     Logger.log(`${work.name}: ${stats.hits} hits delta (+${hitsdiff}), kudos delta (+${kudosdiff}), ${stats.kudos} kudos`);
-    // polite delay between requests
-    Utilities.sleep(3000); 
+
   }
 
   // Build row in your sheet’s structure: [Date, Hits, Hits Delta, Kudos Delta, Kudos]
@@ -118,22 +117,36 @@ function fetchAO3Stats(url) {
 }
 
 function applyConditionalFormatting() {
-  const sheet = SpreadsheetApp
-    .getActiveSpreadsheet()
-    .getSheetByName("AO3 Story Stats");
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName("Story Stats - AO3") || ss.getSheets()[0];
+
+  if (!sheet) {
+    throw new Error("Sheet not found for conditional formatting");
+  }
 
   const rules = sheet.getConditionalFormatRules();
   const storyCount = WORKS.length;
-  const prevRow = sheet.getLastRow
+  const currentRow = sheet.getLastRow();
 
-  const hitDeltaRange = sheet.getRange(prevRow, 2, 1, storyCount, sheet.getMaxRows(), storyCount);
-  const kudosDeltaRange = sheet.getRange(prevRow, 2 + storyCount * 3, 1, storyCount, sheet.getMaxRows(), storyCount);
+  const hitDeltaRange = sheet.getRange(
+    currentRow, 
+    2 + storyCount,
+    1,
+    storyCount 
+    );
+
+  const kudosDeltaRange = sheet.getRange(
+    currentRow,
+    2 + storyCount * 2,
+    1,
+    storyCount
+    );
 
 // --- CONDITIONAL FORMATTING FOR HITS --- 
   // Positive delta → fuchsia
   const positiveHitRule = SpreadsheetApp.newConditionalFormatRule()
     .whenNumberGreaterThan(200)
-    .setBackground("#FF00FF")
+    .setBackground("#FF0BF8")
     .setRanges([hitDeltaRange])
     .build();
 
@@ -162,7 +175,7 @@ function applyConditionalFormatting() {
   // Positive delta → fuchsia
   const positiveKudoRule = SpreadsheetApp.newConditionalFormatRule()
     .whenNumberGreaterThan(20)
-    .setBackground("#FF00FF")
+    .setBackground("#FF0BF8")
     .setRanges([kudosDeltaRange])
     .build();
 
