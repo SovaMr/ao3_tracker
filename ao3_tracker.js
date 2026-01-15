@@ -9,31 +9,33 @@ const WORKS = [
   { name: "Light", url: "https://archiveofourown.org/works/55810327"},
   { name: "Home", url: "https://archiveofourown.org/works/53755675"},
   { name: "Entanglement", url: "https://archiveofourown.org/works/48060295" },
+  { name: "Void", url: "https://archiveofourown.org/works/77684251"},
   { name: "Glowing", url: "https://archiveofourown.org/works/77444221" },
   { name: "No Lying", url: "https://archiveofourown.org/works/77164386"},
   { name: "Little Bit", url: "https://archiveofourown.org/works/49061737" }
 ];
 
 /**
- * Main entry point: fetch AO3 stats and append one new row
+ * Main function: fetch AO3 stats and append one new row, and apply defined conditional formatting
  */
 function updateAO3Stats() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheet = ss.getSheetByName("Story Stats - AO3") || ss.getSheets()[0];
   const lastRow = sheet.getLastRow();
-  const today = Utilities.formatDate(new Date(), ss.getSpreadsheetTimeZone(), "dd-MMM");
+  const today = Utilities.formatDate(new Date(), ss.getSpreadsheetTimeZone(), "dd-MMM"); // It defines the date format, ex. 14-Nov
+  const numberOfWorks = WORKS.length
 
   // Read previous hits from the last data row (row 3+)
   let prevHits = {};
   if (lastRow >= 3) {
-    const prevHitsValues = sheet.getRange(lastRow, 2, 1, WORKS.length).getValues()[0];
+    const prevHitsValues = sheet.getRange(lastRow, 2 + numberOfWorks * 2, 1, numberOfWorks).getValues()[0];
     WORKS.forEach((work, i) => prevHits[work.name] = parseInt(prevHitsValues[i] || 0, 10));
   }
 
   // Read previous kudos from the last data row (row 3+)
   let prevKudos = {};
   if (lastRow >= 3) {
-    const prevKudoValues = sheet.getRange(lastRow, 2 + WORKS.length * 3, 1, WORKS.length).getValues()[0];
+    const prevKudoValues = sheet.getRange(lastRow, 2 + numberOfWorks * 3, 1, numberOfWorks).getValues()[0];
     WORKS.forEach((work, i) => prevKudos[work.name] = parseInt(prevKudoValues[i] || 0, 10));
   }
 
@@ -72,15 +74,15 @@ if (!prevKudo || prevKudo === 0) {
 
     hitsdelta.push(hitsdiff);
     kudosdelta.push(kudosdiff);
-    Logger.log(`${work.name}: ${stats.hits} hits delta (+${hitsdiff}), kudos delta (+${kudosdiff}), ${stats.kudos} kudos`);
+    Logger.log(`${work.name}: hits delta (+${hitsdiff}), kudos delta (+${kudosdiff}), ${stats.hits} hits, ${stats.kudos} kudos`);
 
   }
 
-  // Build row in your sheet’s structure: [Date, Hits, Hits Delta, Kudos Delta, Kudos]
-  const newRow = [today].concat(
-    hits, 
+  // Build row in your sheet’s structure: [Date, Hits Delta, Kudos Delta, Hits, Kudos]
+  const newRow = [today].concat( 
     hitsdelta, 
     kudosdelta, 
+    hits,
     kudos);
 
   sheet.appendRow(newRow);
@@ -130,14 +132,14 @@ function applyConditionalFormatting() {
 
   const hitDeltaRange = sheet.getRange(
     currentRow, 
-    2 + storyCount,
+    2,
     1,
     storyCount 
     );
 
   const kudosDeltaRange = sheet.getRange(
     currentRow,
-    2 + storyCount * 2,
+    2 + storyCount,
     1,
     storyCount
     );
