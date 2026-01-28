@@ -1,216 +1,147 @@
-/**
- * AO3 → Google Sheets daily stats tracker
- */
-
-const WORKS = [
-  { name: "Glass", url: "https://archiveofourown.org/works/72406296" },
-  { name: "Deal", url: "https://archiveofourown.org/works/61070437" },
-  { name: "Heart", url: "https://archiveofourown.org/works/57913276" },
-  { name: "Light", url: "https://archiveofourown.org/works/55810327"},
-  { name: "Home", url: "https://archiveofourown.org/works/53755675"},
-  { name: "Entanglement", url: "https://archiveofourown.org/works/48060295" },
-  { name: "Void", url: "https://archiveofourown.org/works/77684251"},
-  { name: "Glowing", url: "https://archiveofourown.org/works/77444221" },
-  { name: "No Lying", url: "https://archiveofourown.org/works/77164386"},
-  { name: "Little Bit", url: "https://archiveofourown.org/works/49061737" }
-];
-
-/**
- * Main function: fetch AO3 stats and append one new row, and apply defined conditional formatting
- */
 function updateAO3Stats() {
+  const WORKS = CONFIG.myWorks;
+  const EMAIL = CONFIG.myEmail;
+  const SHEET_NAME = CONFIG.myExcel;
+  const TITLE = CONFIG.fullName;
+
+
   const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const sheet = ss.getSheetByName("Story Stats - AO3") || ss.getSheets()[0];
-  const lastRow = sheet.getLastRow();
-  const today = Utilities.formatDate(new Date(), ss.getSpreadsheetTimeZone(), "dd-MMM"); // It defines the date format, ex. 14-Nov
-  const numberOfWorks = WORKS.length
+  const sheet = ss.getSheetByName(SHEET_NAME) || ss.getSheets()[0];
+  try {
+    if (!sheet) {
+      throw new Error ('Sheet not found: $(SHEET_NAME)')
+    }
 
-  // Read previous hits from the last data row (row 3+)
-  let prevHits = {};
-  if (lastRow >= 3) {
-    const prevHitsValues = sheet.getRange(lastRow, 2 + numberOfWorks * 2, 1, numberOfWorks).getValues()[0];
-    WORKS.forEach((work, i) => prevHits[work.name] = parseInt(prevHitsValues[i] || 0, 10));
-  }
-
-  // Read previous kudos from the last data row (row 3+)
-  let prevKudos = {};
-  if (lastRow >= 3) {
-    const prevKudoValues = sheet.getRange(lastRow, 2 + numberOfWorks * 3, 1, numberOfWorks).getValues()[0];
-    WORKS.forEach((work, i) => prevKudos[work.name] = parseInt(prevKudoValues[i] || 0, 10));
-  }
-
-  const hits = [];
-  const hitsdelta = [];
-  const kudos = [];
-  const kudosdelta = [];
-
-  for (const work of WORKS) {
-    const stats = fetchAO3Stats(work.url);
-    hits.push(stats.hits);
-    kudos.push(stats.kudos);
-    let hitsdiff = 0;
-    let kudosdiff = 0;
-
-    // --- HIT DELTA ---
-const prevHit = prevHits[work.name];
-
-if (!prevHit || prevHit === 0) {
-  // First recorded day or missing data
-  hitsdiff = stats.hits;
-} else {
-  hitsdiff = stats.hits - prevHit;
-}
-
-    // --- KUDOS DELTA ---
-const prevKudo = prevKudos[work.name];
-
-if (!prevKudo || prevKudo === 0) {
-  // First recorded day or missing data
-  kudosdiff = stats.kudos;
-} else {
-  kudosdiff = stats.kudos - prevKudo;
-}
+    const lastRow = sheet.getLastRow();
+    const today = Utilities.formatDate(
+      new Date(),                              // It defines the date format, ex. 14-Nov
+      ss.getSpreadsheetTimeZone(),
+      "dd-MMM"); 
+    const workCount = WORKS.length
 
 
-    hitsdelta.push(hitsdiff);
-    kudosdelta.push(kudosdiff);
-    Logger.log(`${work.name}: hits delta (+${hitsdiff}), kudos delta (+${kudosdiff}), ${stats.hits} hits, ${stats.kudos} kudos`);
+      // ─────────────────────────────────────────────
+      // Read previous hits (last data row)
+      // ─────────────────────────────────────────────
 
-  }
+    let prevHits = {};
+    let prevKudos = {};
 
-  // Build row in your sheet’s structure: [Date, Hits Delta, Kudos Delta, Hits, Kudos]
-  const newRow = [today].concat( 
-    hitsdelta, 
-    kudosdelta, 
-    hits,
-    kudos);
+    if (lastRow >= 3) {
+      // HITS
+      const prevHitsValues = sheet
+        .getRange(lastRow, 2 + workCount * 2, 1, workCount)
+        .getValues()[0];
 
-  sheet.appendRow(newRow);
-  Logger.log("✅ Added new AO3 stats row");
+      // KUDOS
+      const prevKudoValues = sheet
+        .getRange(lastRow, 2 + workCount * 3, 1, workCount)
+        .getValues()[0];
 
-  // Apply conditional formatting AFTER data is written
-  applyConditionalFormatting();
-}
+      WORKS.forEach((work, i) => {
+        prevHits[work.name] = Number(prevHitsValues[i] || 0);
+        prevKudos[work.name] = Number(prevKudoValues[i] || 0);
+      });
+    }
 
-/**
- * Fetch and parse AO3 stats for one work
- */
-function fetchAO3Stats(url) {
-  const response = UrlFetchApp.fetch(url, {
-    headers: {
-      "User-Agent": "Mozilla/5.0 (compatible; AO3-Stats-Tracker/1.0; personal use)"
-    },
-    muteHttpExceptions: true
-  });
+    
 
-  const html = response.getContentText();
+    // ─────────────────────────────────────────────
+    // Fetch AO3 stats (with retry + maintenance check)
+    // ─────────────────────────────────────────────
+    const hits = [];
+    const hitsdelta = [];
+    const kudos = [];
+    const kudosdelta = [];
+    const failedFetch = [];
+    const failedFetchReason = {};
+    
 
-  // Normalize whitespace
-  const clean = html.replace(/\s+/g, " ");
+    for (const work of WORKS) {
+      const stats = fetchAO3Stats(work.url);
+    
+      // --- HIT DELTA ---
+      const prevHit = prevHits[work.name];
 
-  // Match numbers after "Hits:" and "Kudos:"
-  const hitsMatch = clean.match(/<dt[^>]*>\s*Hits:\s*<\/dt>\s*<dd[^>]*>([\d,]+)/i);
-  const kudosMatch = clean.match(/<dt[^>]*>\s*Kudos:\s*<\/dt>\s*<dd[^>]*>([\d,]+)/i);
+      if (!prevHit || prevHit === 0) {
+        // First recorded day or missing data
+        hitsdiff = stats.hits;
+      } else {
+        hitsdiff = stats.hits - prevHit;
+      }
 
-  const hits = hitsMatch ? parseInt(hitsMatch[1].replace(/,/g, ""), 10) : 0;
-  const kudos = kudosMatch ? parseInt(kudosMatch[1].replace(/,/g, ""), 10) : 0;
+        // --- KUDOS DELTA ---
+      const prevKudo = prevKudos[work.name];
 
-  return { hits, kudos };
-}
+      if (!prevKudo || prevKudo === 0) {
+        // First recorded day or missing data
+        kudosdiff = stats.kudos;
+      } else {
+        kudosdiff = stats.kudos - prevKudo;
+      }
 
-function applyConditionalFormatting() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const sheet = ss.getSheetByName("Story Stats - AO3") || ss.getSheets()[0];
+      // 🚨 INVALID FETCH DETECTION
+      if (stats.hits === 0 && prevHit !== 0) {
+        failedFetch.push(TITLE.name);
+        failedFetchReason[TITLE.name] = "Hits = 0 (propable fetch error 525)";
+      }
 
-  if (!sheet) {
-    throw new Error("Sheet not found for conditional formatting");
-  }
+      hits.push(stats.hits);
+      kudos.push(stats.kudos);
+      hitsdelta.push(hitsdiff);
+      kudosdelta.push(kudosdiff);
 
-  const rules = sheet.getConditionalFormatRules();
-  const storyCount = WORKS.length;
-  const currentRow = sheet.getLastRow();
+      Logger.log(`${work.name}: hits delta (+${hitsdiff}), kudos delta (+${kudosdiff}), ${stats.hits} hits, ${stats.kudos} kudos`);
+    }  
+      // ─────────────────────────────────────────────
+      // Append row ONLY if everything succeeded in your sheet’s structure: 
+      // [Date, Hits Delta, Kudos Delta, Hits, Kudos]
+      // ─────────────────────────────────────────────
+    const newRow = [today].concat( 
+      hitsdelta, 
+      kudosdelta, 
+      hits,
+      kudos
+      );
 
-  const hitDeltaRange = sheet.getRange(
-    currentRow, 
-    2,
-    1,
-    storyCount 
+      sheet.appendRow(newRow);
+
+      Logger.log("✅ Added new AO3 stats row");  
+
+      if (failedFetch.length > 0) {
+        MailApp.sendEmail(
+          EMAIL,
+          "AO3 Stats Warning — Partial Fetch Failure",
+          "The following works returned invalid stats (" + today + "):\n\n" +
+          failedFetch.map(name => `• ${name}: ${failedFetchReason[name]}`).join("\n") +
+          "\n\nStats were still logged to the sheet.\n\n" +
+          "This is likely due to AO3 or Cloudflare issues."
+        );
+      }
+
+} catch (err) {
+
+  // ────────────────────────────────────────────────────
+  //    ───────────── AO3 Maintenance ─────────────
+  // ────────────────────────────────────────────────────
+    if (err.message === "AO3_MAINTENANCE") {
+      MailApp.sendEmail(
+        EMAIL,
+        "AO3 Maintenance — Stats Not Updated",
+        "AO3 is currently down for maintenance.\n\n" +
+        "No stats were appended today to avoid invalid data.\n\n" +
+        "Status page:\nhttps://archiveofourown.org/status"
+      );
+
+      Logger.log("🚧 AO3 maintenance detected — script exited safely");
+      return;
+    }
+
+    // ───────────── Other fatal errors ─────────────
+    MailApp.sendEmail(
+      EMAIL,
+      "AO3 Stats Script Error",
+      `The AO3 stats script failed.\n\nError:\n${err.message}`
     );
-
-  const kudosDeltaRange = sheet.getRange(
-    currentRow,
-    2 + storyCount,
-    1,
-    storyCount
-    );
-
-// --- CONDITIONAL FORMATTING FOR HITS --- 
-  // Positive delta → fuchsia
-  const positiveHitRule = SpreadsheetApp.newConditionalFormatRule()
-    .whenNumberGreaterThan(200)
-    .setBackground("#FF0BF8")
-    .setRanges([hitDeltaRange])
-    .build();
-
-  // Medium delta → yellow
-  const medHitRule = SpreadsheetApp.newConditionalFormatRule()
-    .whenNumberBetween(100,199)
-    .setBackground("#FBBC04")
-    .setRanges([hitDeltaRange])
-    .build();
-
-  // Minimum delta → green
-  const minHitRule = SpreadsheetApp.newConditionalFormatRule()
-    .whenNumberBetween(50,99)
-    .setBackground("#34A853")
-    .setRanges([hitDeltaRange])
-    .build();
-
-// Low delta → violet
-  const zeroHitRule = SpreadsheetApp.newConditionalFormatRule()
-    .whenNumberBetween(25,49)
-    .setBackground("#8E7CBF")
-    .setRanges([hitDeltaRange])
-    .build();
-
-// --- CONDITIONAL FORMATTING FOR KUDOS --- 
-  // Positive delta → fuchsia
-  const positiveKudoRule = SpreadsheetApp.newConditionalFormatRule()
-    .whenNumberGreaterThan(20)
-    .setBackground("#FF0BF8")
-    .setRanges([kudosDeltaRange])
-    .build();
-
-  // Medium delta → yellow
-  const medKudoRule = SpreadsheetApp.newConditionalFormatRule()
-    .whenNumberBetween(10,19)
-    .setBackground("#FBBC04")
-    .setRanges([kudosDeltaRange])
-    .build();
-
-  // Minimum delta → green
-  const minKudoRule = SpreadsheetApp.newConditionalFormatRule()
-    .whenNumberBetween(2,9)
-    .setBackground("#34A853")
-    .setRanges([kudosDeltaRange])
-    .build();
-
-// Low delta → violet
-  const zeroKudoRule = SpreadsheetApp.newConditionalFormatRule()
-    .whenNumberEqualTo(1)
-    .setBackground("#8E7CBF")
-    .setRanges([kudosDeltaRange])
-    .build();
-
-  sheet.setConditionalFormatRules([
-    ...rules,
-    positiveHitRule,
-    medHitRule,
-    minHitRule,
-    zeroHitRule,
-    positiveKudoRule,
-    medKudoRule,
-    minKudoRule,
-    zeroKudoRule
-  ]);
+  }
 }
