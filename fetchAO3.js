@@ -1,7 +1,3 @@
-/** ───────────────────────────────────────
-    Fetch and parse AO3 stats for one work
- ─────────────────────────────────────── **/
-
 function fetchAO3Stats(url) {
   const response = UrlFetchApp.fetch(url, {
     headers: {
@@ -12,18 +8,35 @@ function fetchAO3Stats(url) {
 
   const html = response.getContentText();
 
+  
+    // ────────────────────────
     // 🚨 MAINTENANCE CHECK
+    // ────────────────────────
   if (isAO3MaintenancePage(html)) {
     throw new Error("AO3_MAINTENANCE");
   }
 
+  // ────────────────────────
+  // 📦 Extract stats block
+  // ────────────────────────
+  const statsBlockMatch = html.match(
+    /<dl\s+class=["']stats["'][^>]*>([\s\S]*?)<\/dl>/i
+  );
+
+  if (!statsBlockMatch) {
+    // Page loaded but stats are missing (throttle, partial load, etc.)
+    return { hits: 0, kudos: 0 };
+  }
+
+  const statsBlock = statsBlockMatch[1];
+
 
   // Normalize whitespace
-  const clean = html.replace(/\s+/g, " ");
+  //const clean = html.replace(/\s+/g, " ");
 
   // Match numbers after "Hits:" and "Kudos:"
-  const hitsMatch = clean.match(/<dt[^>]*>\s*Hits:\s*<\/dt>\s*<dd[^>]*>([\d,]+)/i);
-  const kudosMatch = clean.match(/<dt[^>]*>\s*Kudos:\s*<\/dt>\s*<dd[^>]*>([\d,]+)/i);
+  const hitsMatch = statsBlock.match(/<dd\s+class=["']hits["'][^>]*>([\s\S]*?)<\/dd>/i);
+  const kudosMatch = statsBlock.match(/<dd\s+class=["']kudos["'][^>]*>([\s\S]*?)<\/dd>/i);
 
   const hits = hitsMatch ? parseInt(hitsMatch[1].replace(/,/g, ""), 10) : 0;
   const kudos = kudosMatch ? parseInt(kudosMatch[1].replace(/,/g, ""), 10) : 0;
@@ -34,24 +47,6 @@ function fetchAO3Stats(url) {
   // ────────────────────────────────────────────────────
   // ─────────── IF HITS AND KUDOS ARE NULL ─────────────
   // ────────────────────────────────────────────────────
-
-function fetchAO3StatsWithRetry(url, retries = 5) {
-
-  for (let attempt = 1; attempt <= retries; attempt++) {
-    try {
-      return fetchAO3Stats(url);
-    } catch (err) {
-      if (err.message === "AO3_MAINTENANCE") {
-        throw err; // stop immediately, no retries
-      }
-
-      Logger.log(`⚠️ Fetch failed (attempt ${attempt}) for ${url}`);
-    }
-  }
-
-  throw new Error(`FAILED_FETCH`);
-}
-
 function isAO3MaintenancePage(html) {
   const lower = html.toLowerCase();
 
@@ -63,3 +58,32 @@ function isAO3MaintenancePage(html) {
   );
 }
 
+function fetchAO3StatsSafe(work) {
+  try {
+    const stats = fetchAO3Stats(work.url);
+
+    if (stats.hits === 0 && stats.kudos === 0) {
+      return {
+        work,
+        status: "INVALID_ZERO_STATS"
+      };
+    }
+
+    return {
+      work,
+      status: "OK",
+      stats
+    };
+
+  } catch (err) {
+    if (err.message === "AO3_MAINTENANCE") {
+      throw err; // global fatal
+    }
+
+    return {
+      work,
+      status: "FAILED",
+      error: err.message
+    };
+  }
+}
