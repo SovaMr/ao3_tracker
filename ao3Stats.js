@@ -2,8 +2,6 @@ function updateAO3Stats() {
   const WORKS = CONFIG.myWorks;
   const EMAIL = CONFIG.myEmail;
   const SHEET_NAME = CONFIG.myExcel;
-  const TITLE = CONFIG.fullName;
-
 
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheet = ss.getSheetByName(SHEET_NAME) || ss.getSheets()[0];
@@ -82,8 +80,8 @@ function updateAO3Stats() {
 
       // 🚨 INVALID FETCH DETECTION
       if (stats.hits === 0 && prevHit !== 0) {
-        failedFetch.push(TITLE.name);
-        failedFetchReason[TITLE.name] = "Hits = 0 (propable fetch error 525)";
+        failedFetch.push(work.name);
+        failedFetchReason[work.name] = "Hits = 0 (propable fetch error 525)";
       }
 
       hits.push(stats.hits);
@@ -92,6 +90,7 @@ function updateAO3Stats() {
       kudosdelta.push(kudosdiff);
 
       Logger.log(`${work.name}: hits delta (+${hitsdiff}), kudos delta (+${kudosdiff}), ${stats.hits} hits, ${stats.kudos} kudos`);
+      Utilities.sleep(4500);
     }  
       // ─────────────────────────────────────────────
       // Append row ONLY if everything succeeded in your sheet’s structure: 
@@ -108,14 +107,33 @@ function updateAO3Stats() {
 
       Logger.log("✅ Added new AO3 stats row");  
 
-      if (failedFetch.length > 0) {
+      if (failedFetch.length === WORKS.length) {
         MailApp.sendEmail(
           EMAIL,
-          "AO3 Stats Warning — Partial Fetch Failure",
+          "K-Pop Demon Hunters - Full Fetch Failure",
           "The following works returned invalid stats (" + today + "):\n\n" +
           failedFetch.map(name => `• ${name}: ${failedFetchReason[name]}`).join("\n") +
           "\n\nStats were still logged to the sheet.\n\n" +
           "This is likely due to AO3 or Cloudflare issues."
+        );
+      }
+
+      if (failedFetch.length > 0 && failedFetch.length < WORKS.length) {
+        MailApp.sendEmail(
+          EMAIL,
+          "K-Pop Demon Hunters - Partial Fetch Failure",
+          "The following works returned invalid stats (" + today + "):\n\n" +
+          failedFetch.map(name => `• ${name}: ${failedFetchReason[name]}`).join("\n") +
+          "\n\nStats were still logged to the sheet.\n\n" +
+          "This is likely due to AO3 or Cloudflare issues."
+        );
+      }
+
+      if (failedFetch.length === 0) {
+        MailApp.sendEmail(
+          EMAIL,
+          "K-Pop Demon Hunters - Fetch Success",
+          "The following was updated: n\n" + newRow
         );
       }
 
