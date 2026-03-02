@@ -12,7 +12,7 @@ function updateAO3Stats() {
 
     const lastRow = sheet.getLastRow();
     const today = Utilities.formatDate(
-      new Date(),                              // It defines the date format, ex. 14-Nov
+      new Date(),                              // It defines the date format, ex 14-Nov
       ss.getSpreadsheetTimeZone(),
       "dd-MMM"); 
     const workCount = WORKS.length
@@ -110,7 +110,7 @@ function updateAO3Stats() {
       if (failedFetch.length === WORKS.length) {
         MailApp.sendEmail(
           EMAIL,
-          "K-Pop Demon Hunters - Full Fetch Failure",
+          "Full Fetch Failure",
           "The following works returned invalid stats (" + today + "):\n\n" +
           failedFetch.map(name => `• ${name}: ${failedFetchReason[name]}`).join("\n") +
           "\n\nStats were still logged to the sheet.\n\n" +
@@ -121,7 +121,7 @@ function updateAO3Stats() {
       if (failedFetch.length > 0 && failedFetch.length < WORKS.length) {
         MailApp.sendEmail(
           EMAIL,
-          "K-Pop Demon Hunters - Partial Fetch Failure",
+          "Partial Fetch Failure",
           "The following works returned invalid stats (" + today + "):\n\n" +
           failedFetch.map(name => `• ${name}: ${failedFetchReason[name]}`).join("\n") +
           "\n\nStats were still logged to the sheet.\n\n" +
@@ -132,7 +132,7 @@ function updateAO3Stats() {
       if (failedFetch.length === 0) {
         MailApp.sendEmail(
           EMAIL,
-          "K-Pop Demon Hunters - Fetch Success",
+          "Fetch Success",
           "The following was updated: n\n" + newRow
         );
       }
@@ -163,3 +163,4 @@ function updateAO3Stats() {
     );
   }
 }
+
