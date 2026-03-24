@@ -31,12 +31,12 @@ function updateAO3Stats() {
     if (lastRow >= 3) {
       // HITS
       const prevHitsValues = sheet
-        .getRange(lastRow, 2 + workCount * 3, 1, workCount)
+        .getRange(lastRow, 2 + workCount * 3, 1, workCount) // Defines location of the hits columns
         .getValues()[0];
 
       // KUDOS
       const prevKudoValues = sheet
-        .getRange(lastRow, 2 + workCount * 4, 1, workCount)
+        .getRange(lastRow, 2 + workCount * 4, 1, workCount) // Defines location of the kudos columns
         .getValues()[0];
 
       WORKS.forEach((work, i) => {
