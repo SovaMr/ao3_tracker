@@ -2,6 +2,9 @@ function updateAO3Stats() {
   const WORKS = CONFIG.myWorks;
   const EMAIL = CONFIG.myEmail;
   const SHEET_NAME = CONFIG.myExcel;
+  const SHEET_LINK = CONFIG.myGSheet;
+  const STATS_LINK = CONFIG.myStats;
+  const APP_SCRIPT = CONFIG.myAppScript;
 
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheet = ss.getSheetByName(SHEET_NAME) || ss.getSheets()[0];
@@ -12,7 +15,7 @@ function updateAO3Stats() {
 
     const lastRow = sheet.getLastRow();
     const today = Utilities.formatDate(
-      new Date(),                              // It defines the date format, ex 14-Nov
+      new Date(),                              // It defines the date format, ex. 14-Nov
       ss.getSpreadsheetTimeZone(),
       "dd-MMM"); 
     const workCount = WORKS.length
@@ -51,6 +54,7 @@ function updateAO3Stats() {
     const hitsdelta = [];
     const kudos = [];
     const kudosdelta = [];
+    const hitsConvertion = [];
     const failedFetch = [];
     const failedFetchReason = {};
     
@@ -78,6 +82,15 @@ function updateAO3Stats() {
         kudosdiff = stats.kudos - prevKudo;
       }
 
+        // --- HITS TO KUDOS CONVERSION RATE ---
+      const conversion = kudosdelta/hitsdelta;
+
+      if (!conversion || conversion === 0) {
+        rate = 0;
+      } else {
+        rate = kudosdelta/hitsdelta;
+      }
+
       // 🚨 INVALID FETCH DETECTION
       if (stats.hits === 0 && prevHit !== 0) {
         failedFetch.push(work.name);
@@ -88,8 +101,9 @@ function updateAO3Stats() {
       kudos.push(stats.kudos);
       hitsdelta.push(hitsdiff);
       kudosdelta.push(kudosdiff);
+      hitsConvertion.push(rate);
 
-      Logger.log(`${work.name}: hits delta (+${hitsdiff}), kudos delta (+${kudosdiff}), ${stats.hits} hits, ${stats.kudos} kudos`);
+      Logger.log(`${work.name}: hits delta (+${hitsdiff}), kudos delta (+${kudosdiff}), ${stats.hits} hits, ${stats.kudos} kudos, convertion ${rate}%`);
       Utilities.sleep(4500);
     }  
       // ─────────────────────────────────────────────
@@ -100,7 +114,8 @@ function updateAO3Stats() {
       hitsdelta, 
       kudosdelta, 
       hits,
-      kudos
+      kudos,
+      hitsConvertion
       );
 
       sheet.appendRow(newRow);
@@ -110,30 +125,36 @@ function updateAO3Stats() {
       if (failedFetch.length === WORKS.length) {
         MailApp.sendEmail(
           EMAIL,
-          "Full Fetch Failure",
+          "K-Pop Demon Hunters - Full Fetch Failure",
           "The following works returned invalid stats (" + today + "):\n\n" +
           failedFetch.map(name => `• ${name}: ${failedFetchReason[name]}`).join("\n") +
           "\n\nStats were still logged to the sheet.\n\n" +
-          "This is likely due to AO3 or Cloudflare issues."
+          "This is likely due to AO3 or Cloudflare issues." + 
+          "\n\n See the following link for more:" +
+          "\n\n" + STATS_LINK
         );
       }
 
       if (failedFetch.length > 0 && failedFetch.length < WORKS.length) {
         MailApp.sendEmail(
           EMAIL,
-          "Partial Fetch Failure",
+          "K-Pop Demon Hunters - Partial Fetch Failure",
           "The following works returned invalid stats (" + today + "):\n\n" +
           failedFetch.map(name => `• ${name}: ${failedFetchReason[name]}`).join("\n") +
           "\n\nStats were still logged to the sheet.\n\n" +
-          "This is likely due to AO3 or Cloudflare issues."
+          "This is likely due to AO3 or Cloudflare issues." + 
+          "\n\n See the following link for more:" +
+          "\n\n" + STATS_LINK
         );
       }
 
       if (failedFetch.length === 0) {
         MailApp.sendEmail(
           EMAIL,
-          "Fetch Success",
-          "The following was updated: n\n" + newRow
+          "K-Pop Demon Hunters - Fetch Success",
+          "The following was updated: \n\n" + newRow + 
+          "\n\n See the following link for more:" +
+          "\n\n" + SHEET_LINK
         );
       }
 
@@ -159,8 +180,9 @@ function updateAO3Stats() {
     MailApp.sendEmail(
       EMAIL,
       "AO3 Stats Script Error",
-      `The AO3 stats script failed.\n\nError:\n${err.message}`
+      `The AO3 stats script failed.\n\nError:\n${err.message}` + 
+          "\n\n See the following link for more:" +
+          "\n\n" + APP_SCRIPT
     );
   }
 }
-
