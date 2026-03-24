@@ -31,12 +31,12 @@ function updateAO3Stats() {
     if (lastRow >= 3) {
       // HITS
       const prevHitsValues = sheet
-        .getRange(lastRow, 2 + workCount * 2, 1, workCount)
+        .getRange(lastRow, 2 + workCount * 3, 1, workCount)
         .getValues()[0];
 
       // KUDOS
       const prevKudoValues = sheet
-        .getRange(lastRow, 2 + workCount * 3, 1, workCount)
+        .getRange(lastRow, 2 + workCount * 4, 1, workCount)
         .getValues()[0];
 
       WORKS.forEach((work, i) => {
@@ -54,7 +54,7 @@ function updateAO3Stats() {
     const hitsdelta = [];
     const kudos = [];
     const kudosdelta = [];
-    const hitsConvertion = [];
+    const hitsConversion = [];
     const failedFetch = [];
     const failedFetchReason = {};
     
@@ -83,12 +83,11 @@ function updateAO3Stats() {
       }
 
         // --- HITS TO KUDOS CONVERSION RATE ---
-      const conversion = kudosdelta/hitsdelta;
-
-      if (!conversion || conversion === 0) {
+      const conversion = ((stats.kudos - prevKudo)/(stats.hits - prevHit));
+      if (!hitsdelta || hitsdelta === 0 || !kudosdelta || kudosdelta === 0 || !conversion || conversion === "NaN") {
         rate = 0;
       } else {
-        rate = kudosdelta/hitsdelta;
+        rate = ((stats.kudos - prevKudo)/(stats.hits - prevHit));
       }
 
       // 🚨 INVALID FETCH DETECTION
@@ -101,9 +100,9 @@ function updateAO3Stats() {
       kudos.push(stats.kudos);
       hitsdelta.push(hitsdiff);
       kudosdelta.push(kudosdiff);
-      hitsConvertion.push(rate);
+      hitsConversion.push(rate);
 
-      Logger.log(`${work.name}: hits delta (+${hitsdiff}), kudos delta (+${kudosdiff}), ${stats.hits} hits, ${stats.kudos} kudos, convertion ${rate}%`);
+      Logger.log(`${work.name}: hits delta (+${hitsdiff}), kudos delta (+${kudosdiff}), conversion ${rate}%, ${stats.hits} hits, ${stats.kudos} kudos`);
       Utilities.sleep(4500);
     }  
       // ─────────────────────────────────────────────
@@ -113,9 +112,9 @@ function updateAO3Stats() {
     const newRow = [today].concat( 
       hitsdelta, 
       kudosdelta, 
+      hitsConversion,
       hits,
-      kudos,
-      hitsConvertion
+      kudos
       );
 
       sheet.appendRow(newRow);
@@ -125,7 +124,7 @@ function updateAO3Stats() {
       if (failedFetch.length === WORKS.length) {
         MailApp.sendEmail(
           EMAIL,
-          "K-Pop Demon Hunters - Full Fetch Failure",
+          "YOUR FANDOM NAME - Full Fetch Failure",
           "The following works returned invalid stats (" + today + "):\n\n" +
           failedFetch.map(name => `• ${name}: ${failedFetchReason[name]}`).join("\n") +
           "\n\nStats were still logged to the sheet.\n\n" +
@@ -138,7 +137,7 @@ function updateAO3Stats() {
       if (failedFetch.length > 0 && failedFetch.length < WORKS.length) {
         MailApp.sendEmail(
           EMAIL,
-          "K-Pop Demon Hunters - Partial Fetch Failure",
+          "YOUR FANDOM NAME - Partial Fetch Failure",
           "The following works returned invalid stats (" + today + "):\n\n" +
           failedFetch.map(name => `• ${name}: ${failedFetchReason[name]}`).join("\n") +
           "\n\nStats were still logged to the sheet.\n\n" +
@@ -151,7 +150,7 @@ function updateAO3Stats() {
       if (failedFetch.length === 0) {
         MailApp.sendEmail(
           EMAIL,
-          "K-Pop Demon Hunters - Fetch Success",
+          "YOUR FANDOM NAME - Fetch Success",
           "The following was updated: \n\n" + newRow + 
           "\n\n See the following link for more:" +
           "\n\n" + SHEET_LINK
